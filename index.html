@@ -202,6 +202,12 @@
       .card__actions .btn { flex: 1; min-width: 120px; }
       .card__actions .btn--primary { flex: 1.4; }
       .more-wrap { margin: 14px 0 4px; }
+      .admax-slot { margin: 18px 0 4px; text-align: center; overflow: hidden; }
+      .admax-slot[hidden] { display: none !important; margin: 0; }
+      .card__affiliate { margin-top: 10px; }
+      .card__affiliate a { font-size: 13px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
+      .sheet-affiliate { display: none; margin-top: 10px; width: 100%; }
+      .sheet-affiliate.show { display: inline-flex; }
 
       .similar-panel { margin-top: 22px; display: none; }
       .similar-panel.open { display: block; }
@@ -328,6 +334,7 @@
           <button type="submit" class="btn btn--primary" id="search-submit">検索する</button>
         </form>
         <div id="search-results"></div>
+        <div class="admax-slot" data-admax-slot="search" hidden></div>
       </section>
 
       <!-- ============ ランキング ============ -->
@@ -414,6 +421,8 @@
         <div class="done-actions" id="sheet-done">
           <button type="button" class="btn btn--primary" id="sheet-register">タテヨミに登録</button>
           <button type="button" class="btn btn--block" id="sheet-save">ZIPを保存</button>
+          <a class="btn sheet-affiliate" id="sheet-affiliate" target="_blank" rel="noopener sponsored">書籍版を探す（Amazon）</a>
+          <div class="admax-slot" data-admax-slot="download" hidden></div>
           <div class="registered-note" id="sheet-registered"></div>
           <button type="button" class="btn btn--block" id="sheet-close">閉じる</button>
         </div>
@@ -428,6 +437,12 @@
       var RELAY = "https://narou-relay.gogo-nakachan.workers.dev/?url=";
       var API = "https://api.syosetu.com/novelapi/api/";
       var TATEYOMI_URL = "https://uotamy.github.io/tategaki-viewer/";
+      /* ---- 広告・アフィリエイト設定（未設定なら表示要素ごと出さない） ----
+         ADMAX_TAG: 忍者AdMaxの広告タグHTML文字列。取得後にここへ貼るだけで有効化。
+         AFF_AMAZON_TEMPLATE: もしもアフィリエイト経由のAmazonリンク用テンプレート。
+           {url} が URLエンコード済みの遷移先URL（Amazon検索URL）に置換される。 */
+      var ADMAX_TAG = '';
+      var AFF_AMAZON_TEMPLATE = '';
       var GENRES = {
         "101": "異世界恋愛", "102": "現実恋愛",
         "201": "ハイファンタジー", "202": "ローファンタジー",
@@ -497,6 +512,25 @@
       function sanitizeFilename(name) {
         return String(name || "novel").replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "novel";
       }
+      function amazonSearchURL(title) {
+        return "https://www.amazon.co.jp/s?k=" + encodeURIComponent(title || "");
+      }
+      function affiliateAmazonURL(title) {
+        if (!AFF_AMAZON_TEMPLATE || !String(AFF_AMAZON_TEMPLATE).trim()) return "";
+        var encoded = encodeURIComponent(amazonSearchURL(title));
+        if (AFF_AMAZON_TEMPLATE.indexOf("{url}") >= 0) {
+          return AFF_AMAZON_TEMPLATE.split("{url}").join(encoded);
+        }
+        return AFF_AMAZON_TEMPLATE;
+      }
+      function initAdMaxSlots() {
+        if (!ADMAX_TAG || !String(ADMAX_TAG).trim()) return;
+        document.querySelectorAll("[data-admax-slot]").forEach(function (el) {
+          el.innerHTML = ADMAX_TAG;
+          el.hidden = false;
+        });
+      }
+      initAdMaxSlots();
 
       /* ================= 作品カード ================= */
       var novelStore = {}; // ncode(upper) -> novel object
@@ -510,6 +544,7 @@
           pointHTML = "<span>" + f[1] + " <b>" + fmtNum(n[f[0]]) + "</b></span>";
         }
         var kw = (n.keyword || "").trim();
+        var affURL = affiliateAmazonURL(n.title);
         return '<article class="card">' +
           '<div class="card__top">' +
             (rank ? '<div class="rank' + (rank <= 3 ? " rank--top" : "") + '">' + rank + "</div>" : "") +
@@ -536,6 +571,7 @@
             '<button type="button" class="btn btn--primary" data-dl="' + esc(n.ncode) + '">全話ダウンロード</button>' +
             '<button type="button" class="btn" data-similar="' + esc(n.ncode) + '">似た作品</button>' +
           "</div>" +
+          (affURL ? '<div class="card__affiliate"><a href="' + esc(affURL) + '" target="_blank" rel="noopener sponsored">書籍版を探す（Amazon）</a></div>' : "") +
         "</article>";
       }
       function renderList(container, novels, opts) {
@@ -888,6 +924,8 @@
         $("#sheet-warn").classList.toggle("show", (novel.general_all_no || 0) > 300);
         $("#sheet-progress-area").style.display = "block";
         $("#sheet-done").classList.remove("show");
+        var affReset = $("#sheet-affiliate");
+        if (affReset) { affReset.classList.remove("show"); affReset.removeAttribute("href"); }
         $("#sheet-registered").classList.remove("show");
         $("#sheet-registered").innerHTML = "";
         $("#sheet-fill").style.width = "0%";
@@ -1023,6 +1061,12 @@
           $("#sheet-sub").textContent = novel.title + "／全" + epCount + "話／" + formatBytes(blob.size);
           $("#sheet-progress-area").style.display = "none";
           $("#sheet-done").classList.add("show");
+          var affEl = $("#sheet-affiliate");
+          if (affEl) {
+            var affURL2 = (typeof affiliateAmazonURL === "function") ? affiliateAmazonURL(novel.title) : "";
+            if (affURL2) { affEl.href = affURL2; affEl.classList.add("show"); }
+            else { affEl.classList.remove("show"); affEl.removeAttribute("href"); }
+          }
           return "done";
         });
       }
