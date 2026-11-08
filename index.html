@@ -1026,8 +1026,8 @@
           var lastChapter = first.lastChapter;
           var page = 2;
           function more() {
-            if (dlState.cancelled) return { episodes: episodes };
-            if (episodes.length >= expected || page > 100) return { episodes: episodes };
+            if (dlState.cancelled) return Promise.resolve({ episodes: episodes });
+            if (episodes.length >= expected || page > 100) return Promise.resolve({ episodes: episodes });
             return fetchRelayText(base + "?p=" + page, 3).then(function (html) {
               var parsed = parseToc(html, lastChapter);
               lastChapter = parsed.lastChapter;
@@ -1040,7 +1040,7 @@
               return sleep(400).then(more);
             });
           }
-          return more().then(function (r) {
+          return Promise.resolve(more()).then(function (r) {
             r.episodes.sort(function (a, b) { return a.no - b.no; });
             return r;
           });
