@@ -1,0 +1,1088 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>なろうダウンローダー</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Noto+Serif+JP:wght@600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
+    <style>
+      :root {
+        --bg: #f6f3ec;
+        --surface: #fffdf8;
+        --surface-2: #efe9dc;
+        --ink: #26221c;
+        --ink-2: #6d6455;
+        --line: #ddd3bf;
+        --accent: #b03a26;
+        --accent-strong: #93301f;
+        --accent-ink: #fff8f2;
+        --accent-soft: #f7e3dc;
+        --ok: #2e6b3e;
+        --warn-bg: #fdf3d7;
+        --warn-ink: #6d5410;
+        --shadow: 0 10px 30px rgba(38, 34, 28, 0.18);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #171512;
+          --surface: #221f1b;
+          --surface-2: #2c2823;
+          --ink: #ece5d8;
+          --ink-2: #a89c88;
+          --line: #3d372e;
+          --accent: #d96a52;
+          --accent-strong: #e07f68;
+          --accent-ink: #1d130e;
+          --accent-soft: #3d2620;
+          --ok: #7fc48f;
+          --warn-bg: #3a3016;
+          --warn-ink: #e8cd7d;
+          --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+      }
+      * { box-sizing: border-box; }
+      html { -webkit-text-size-adjust: 100%; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+        font-size: 15px;
+        line-height: 1.6;
+      }
+      a { color: var(--accent); }
+      button { font: inherit; cursor: pointer; }
+      input, select { font: inherit; color: var(--ink); }
+      :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+      /* ---------- header ---------- */
+      .site-head {
+        position: sticky; top: 0; z-index: 30;
+        background: var(--bg);
+        border-bottom: 1px solid var(--line);
+      }
+      .site-head__in {
+        max-width: 880px; margin: 0 auto; padding: 10px 16px;
+        display: flex; align-items: center; gap: 12px;
+      }
+      .site-title {
+        font-family: "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", serif;
+        font-weight: 700; font-size: 19px; letter-spacing: 0.02em;
+        margin: 0; white-space: nowrap;
+      }
+      .site-title .mark { color: var(--accent); }
+      .head-spacer { flex: 1; }
+      .tateyomi-link {
+        display: inline-flex; align-items: center; gap: 6px;
+        border: 1px solid var(--accent); color: var(--accent);
+        border-radius: 999px; padding: 6px 13px;
+        font-size: 13px; font-weight: 700; text-decoration: none;
+        white-space: nowrap; background: var(--surface);
+      }
+      .tateyomi-link:active { background: var(--accent-soft); }
+      .tateyomi-link .ribbon {
+        width: 8px; height: 14px; background: var(--accent);
+        clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+        flex: none;
+      }
+
+      main { max-width: 880px; margin: 0 auto; padding: 0 16px 64px; }
+      .lead { color: var(--ink-2); font-size: 13.5px; margin: 14px 2px 4px; }
+      .lead a { font-weight: 700; }
+
+      /* ---------- tabs ---------- */
+      .tabs {
+        position: sticky; top: 53px; z-index: 20;
+        background: var(--bg);
+        display: grid; grid-template-columns: repeat(4, 1fr);
+        gap: 6px; padding: 10px 0 8px;
+      }
+      .tab-btn {
+        border: 1px solid var(--line); background: var(--surface);
+        color: var(--ink-2); border-radius: 8px;
+        padding: 9px 2px; font-size: 14px; font-weight: 700;
+      }
+      .tab-btn[aria-selected="true"] {
+        background: var(--accent); border-color: var(--accent); color: var(--accent-ink);
+      }
+      .panel { display: none; }
+      .panel.active { display: block; }
+
+      /* ---------- forms ---------- */
+      .form-card {
+        background: var(--surface); border: 1px solid var(--line);
+        border-radius: 12px; padding: 14px; margin-top: 6px;
+      }
+      .field { margin-bottom: 12px; }
+      .field:last-child { margin-bottom: 0; }
+      .field label { display: block; font-size: 12.5px; font-weight: 700; color: var(--ink-2); margin-bottom: 5px; }
+      .field input[type="text"], .field input[type="search"], .field select {
+        width: 100%; min-height: 44px; padding: 8px 10px;
+        border: 1px solid var(--line); border-radius: 8px; background: var(--bg);
+      }
+      .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      @media (max-width: 460px) { .field-row { grid-template-columns: 1fr 1fr; } }
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        min-height: 44px; padding: 9px 16px; border-radius: 8px;
+        border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+        font-weight: 700; font-size: 14px; text-decoration: none;
+      }
+      .btn--primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); width: 100%; }
+      .btn--primary:active { background: var(--accent-strong); }
+      .btn--block { width: 100%; }
+      .btn[disabled] { opacity: 0.55; cursor: default; }
+
+      .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+      .chip {
+        border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
+        border-radius: 999px; padding: 7px 13px; font-size: 13px; font-weight: 700;
+        min-height: 38px;
+      }
+      .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+      .chip-label { font-size: 12.5px; font-weight: 700; color: var(--ink-2); margin: 0 0 6px; }
+
+      /* ---------- results ---------- */
+      .results-head {
+        display: flex; align-items: baseline; gap: 10px;
+        margin: 18px 2px 10px;
+      }
+      .results-head h2 {
+        font-family: "Noto Serif JP", "Hiragino Mincho ProN", serif;
+        font-size: 16.5px; margin: 0;
+      }
+      .results-head .count { color: var(--ink-2); font-size: 13px; }
+      .empty {
+        border: 1px dashed var(--line); border-radius: 12px;
+        padding: 22px 16px; text-align: center; color: var(--ink-2);
+        font-size: 13.5px; margin-top: 12px; background: var(--surface);
+      }
+      .card {
+        background: var(--surface); border: 1px solid var(--line);
+        border-radius: 12px; padding: 14px; margin-bottom: 10px;
+      }
+      .card__top { display: flex; gap: 10px; align-items: flex-start; }
+      .rank {
+        flex: none; width: 30px; height: 30px; border-radius: 50%;
+        background: var(--surface-2); color: var(--ink);
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 700; font-size: 14px; margin-top: 2px;
+        font-family: "Noto Serif JP", serif;
+      }
+      .rank--top { background: var(--accent); color: var(--accent-ink); }
+      .card__title {
+        font-family: "Noto Serif JP", "Hiragino Mincho ProN", serif;
+        font-size: 16.5px; font-weight: 700; line-height: 1.45; margin: 0;
+      }
+      .card__title a { color: var(--ink); text-decoration: none; }
+      .card__title a:active { color: var(--accent); }
+      .card__writer { color: var(--ink-2); font-size: 13px; margin-top: 2px; }
+      .badges { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+      .badge {
+        font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+        background: var(--surface-2); color: var(--ink-2);
+      }
+      .badge--done { background: var(--accent-soft); color: var(--accent); }
+      .meta {
+        display: flex; flex-wrap: wrap; gap: 4px 14px;
+        color: var(--ink-2); font-size: 12.5px; margin-top: 8px;
+      }
+      .meta b { color: var(--ink); font-weight: 700; }
+      .card details { margin-top: 8px; }
+      .card summary { font-size: 13px; font-weight: 700; color: var(--accent); cursor: pointer; padding: 4px 0; }
+      .story { font-size: 13.5px; color: var(--ink); white-space: pre-wrap; margin: 4px 0 2px; }
+      .keywords { font-size: 12px; color: var(--ink-2); margin-top: 6px; }
+      .card__actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+      .card__actions .btn { flex: 1; min-width: 120px; }
+      .card__actions .btn--primary { flex: 1.4; }
+      .more-wrap { margin: 14px 0 4px; }
+
+      .similar-panel { margin-top: 22px; display: none; }
+      .similar-panel.open { display: block; }
+      .similar-head { display: flex; align-items: center; gap: 10px; margin: 0 2px 10px; }
+      .similar-head h2 { font-family: "Noto Serif JP", serif; font-size: 16.5px; margin: 0; flex: 1; }
+      .close-x {
+        border: 1px solid var(--line); background: var(--surface); border-radius: 8px;
+        width: 36px; height: 36px; font-size: 16px; color: var(--ink-2); flex: none;
+      }
+
+      /* ---------- download sheet ---------- */
+      .sheet-backdrop {
+        position: fixed; inset: 0; z-index: 50;
+        background: rgba(20, 16, 10, 0.5);
+        display: none; align-items: flex-end; justify-content: center;
+      }
+      .sheet-backdrop.open { display: flex; }
+      .sheet {
+        background: var(--surface); width: 100%; max-width: 560px;
+        border-radius: 16px 16px 0 0; padding: 20px 18px calc(18px + env(safe-area-inset-bottom));
+        box-shadow: var(--shadow); max-height: 88vh; overflow-y: auto;
+      }
+      @media (min-width: 640px) {
+        .sheet-backdrop { align-items: center; padding: 20px; }
+        .sheet { border-radius: 16px; }
+      }
+      .sheet h2 { font-family: "Noto Serif JP", serif; font-size: 17px; margin: 0 0 4px; line-height: 1.45; }
+      .sheet .sub { color: var(--ink-2); font-size: 13px; margin: 0 0 12px; }
+      .progress-track { height: 10px; background: var(--surface-2); border-radius: 999px; overflow: hidden; }
+      .progress-fill { height: 100%; width: 0%; background: var(--accent); border-radius: 999px; transition: width 0.25s ease; }
+      @media (prefers-reduced-motion: reduce) { .progress-fill { transition: none; } }
+      .progress-text { font-size: 13px; color: var(--ink-2); margin-top: 8px; min-height: 1.6em; }
+      .warn {
+        background: var(--warn-bg); color: var(--warn-ink);
+        border-radius: 8px; padding: 9px 12px; font-size: 13px; margin: 10px 0;
+        display: none;
+      }
+      .warn.show { display: block; }
+      .sheet .btn { margin-top: 10px; }
+      .done-actions { display: none; }
+      .done-actions.show { display: block; }
+      .registered-note {
+        display: none; background: var(--accent-soft); color: var(--ink);
+        border-radius: 8px; padding: 10px 12px; font-size: 13.5px; margin-top: 12px;
+      }
+      .registered-note.show { display: block; }
+      .registered-note a { font-weight: 700; }
+
+      /* ---------- toast / footer ---------- */
+      .toast {
+        position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom));
+        transform: translateX(-50%) translateY(20px);
+        background: var(--ink); color: var(--bg);
+        padding: 10px 16px; border-radius: 999px; font-size: 13.5px; font-weight: 700;
+        opacity: 0; pointer-events: none; transition: opacity 0.2s ease, transform 0.2s ease;
+        z-index: 80; max-width: calc(100vw - 32px); text-align: center;
+        box-shadow: var(--shadow);
+      }
+      .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+      footer {
+        max-width: 880px; margin: 0 auto; padding: 0 16px 40px;
+        color: var(--ink-2); font-size: 12.5px;
+      }
+      footer .foot-links { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-bottom: 8px; }
+      .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    </style>
+  </head>
+  <body>
+    <header class="site-head">
+      <div class="site-head__in">
+        <h1 class="site-title"><span class="mark">なろう</span>ダウンローダー</h1>
+        <div class="head-spacer"></div>
+        <a class="tateyomi-link" href="https://uotamy.github.io/tategaki-viewer/" target="_blank" rel="noopener">
+          <span class="ribbon" aria-hidden="true"></span>タテヨミで読む
+        </a>
+      </div>
+    </header>
+
+    <main>
+      <p class="lead">
+        「小説家になろう」の作品を全話まとめてZIP（青空文庫形式・Shift_JIS）で保存できます。
+        保存したZIPは<a href="https://uotamy.github.io/tategaki-viewer/" target="_blank" rel="noopener">タテヨミ</a>でそのまま開けます。
+      </p>
+
+      <nav class="tabs" role="tablist" aria-label="機能切り替え">
+        <button class="tab-btn" role="tab" id="tabbtn-search" aria-selected="true" aria-controls="panel-search" data-tab="search">検索</button>
+        <button class="tab-btn" role="tab" id="tabbtn-ranking" aria-selected="false" aria-controls="panel-ranking" data-tab="ranking">ランキング</button>
+        <button class="tab-btn" role="tab" id="tabbtn-recommend" aria-selected="false" aria-controls="panel-recommend" data-tab="recommend">おすすめ</button>
+        <button class="tab-btn" role="tab" id="tabbtn-url" aria-selected="false" aria-controls="panel-url" data-tab="url">URL指定</button>
+      </nav>
+
+      <!-- ============ 検索 ============ -->
+      <section class="panel active" id="panel-search" role="tabpanel" aria-labelledby="tabbtn-search">
+        <form class="form-card" id="search-form">
+          <div class="field">
+            <label for="s-word">キーワード</label>
+            <input type="search" id="s-word" placeholder="例）探偵　※空欄でも検索できます" autocomplete="off" />
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label for="s-genre">ジャンル</label>
+              <select id="s-genre"></select>
+            </div>
+            <div class="field">
+              <label for="s-type">状態</label>
+              <select id="s-type">
+                <option value="">すべて</option>
+                <option value="er">完結</option>
+                <option value="r">連載中</option>
+                <option value="t">短編</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label for="s-order">並び順</label>
+            <select id="s-order">
+              <option value="hyoka">総合評価</option>
+              <option value="favnovelcnt">お気に入り数</option>
+              <option value="impressioncnt">感想数</option>
+              <option value="reviewcnt">レビュー数</option>
+              <option value="new">新着</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn--primary" id="search-submit">検索する</button>
+        </form>
+        <div id="search-results"></div>
+      </section>
+
+      <!-- ============ ランキング ============ -->
+      <section class="panel" id="panel-ranking" role="tabpanel" aria-labelledby="tabbtn-ranking">
+        <div class="form-card">
+          <p class="chip-label">期間</p>
+          <div class="chips" id="rank-periods">
+            <button type="button" class="chip" data-period="dailypoint" aria-pressed="false">日間</button>
+            <button type="button" class="chip" data-period="weeklypoint" aria-pressed="true">週間</button>
+            <button type="button" class="chip" data-period="monthlypoint" aria-pressed="false">月間</button>
+            <button type="button" class="chip" data-period="quaterpoint" aria-pressed="false">四半期</button>
+            <button type="button" class="chip" data-period="yearlypoint" aria-pressed="false">年間</button>
+            <button type="button" class="chip" data-period="hyoka" aria-pressed="false">累計</button>
+          </div>
+          <div class="field" style="margin-top:12px;">
+            <label for="r-genre">ジャンル</label>
+            <select id="r-genre"></select>
+          </div>
+        </div>
+        <div id="ranking-results"></div>
+      </section>
+
+      <!-- ============ おすすめ ============ -->
+      <section class="panel" id="panel-recommend" role="tabpanel" aria-labelledby="tabbtn-recommend">
+        <div class="form-card">
+          <p class="chip-label">プリセット（高評価プール最大100件からランダム10件）</p>
+          <div class="chips" id="rec-presets">
+            <button type="button" class="chip" data-preset="0" aria-pressed="false">完結の高評価・推理</button>
+            <button type="button" class="chip" data-preset="1" aria-pressed="false">短編の良作</button>
+            <button type="button" class="chip" data-preset="2" aria-pressed="false">完結の大長編</button>
+            <button type="button" class="chip" data-preset="3" aria-pressed="false">完結の高評価</button>
+          </div>
+          <button type="button" class="btn btn--block" id="rec-again" style="margin-top:12px;" disabled>もう一度ひく</button>
+        </div>
+        <div id="recommend-results">
+          <div class="empty">プリセットを選ぶと、おすすめ作品が表示されます。</div>
+        </div>
+      </section>
+
+      <!-- ============ URL指定 ============ -->
+      <section class="panel" id="panel-url" role="tabpanel" aria-labelledby="tabbtn-url">
+        <form class="form-card" id="url-form">
+          <div class="field">
+            <label for="u-input">作品URL または Nコード</label>
+            <input type="text" id="u-input" placeholder="例）n6812my ／ https://ncode.syosetu.com/n6812my/" autocomplete="off" />
+          </div>
+          <button type="submit" class="btn btn--primary" id="url-submit">作品を表示</button>
+        </form>
+        <div id="url-results"></div>
+      </section>
+
+      <!-- ============ 似た作品 ============ -->
+      <section class="similar-panel" id="similar-panel" aria-live="polite">
+        <div class="similar-head">
+          <h2 id="similar-title">似た作品</h2>
+          <button type="button" class="close-x" id="similar-close" aria-label="似た作品を閉じる">×</button>
+        </div>
+        <div id="similar-results"></div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="foot-links">
+        <a href="https://uotamy.github.io/tategaki-viewer/" target="_blank" rel="noopener">タテヨミ（縦書きビューワー）</a>
+        <a href="https://syosetu.com/" target="_blank" rel="noopener">小説家になろう</a>
+      </div>
+      <p>
+        取得には中継（Cloudflare Workers）を経由し、応答は1時間キャッシュされます。
+        ダウンロードは1話ずつ間隔をあけて取得します。作品の権利は各作者に帰属します。個人で楽しむ範囲でご利用ください。
+      </p>
+    </footer>
+
+    <!-- ============ ダウンロードシート ============ -->
+    <div class="sheet-backdrop" id="sheet-backdrop">
+      <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+        <h2 id="sheet-title">ダウンロード</h2>
+        <p class="sub" id="sheet-sub"></p>
+        <div class="warn" id="sheet-warn">話数が多い作品です。取得に時間がかかります（目安：100話あたり約1〜2分）。画面を閉じずにお待ちください。</div>
+        <div id="sheet-progress-area">
+          <div class="progress-track"><div class="progress-fill" id="sheet-fill"></div></div>
+          <p class="progress-text" id="sheet-text">準備中…</p>
+          <button type="button" class="btn btn--block" id="sheet-cancel">キャンセル</button>
+        </div>
+        <div class="done-actions" id="sheet-done">
+          <button type="button" class="btn btn--primary" id="sheet-register">タテヨミに登録</button>
+          <button type="button" class="btn btn--block" id="sheet-save">ZIPを保存</button>
+          <div class="registered-note" id="sheet-registered"></div>
+          <button type="button" class="btn btn--block" id="sheet-close">閉じる</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast" id="toast" role="status"></div>
+
+    <script>
+      "use strict";
+      /* ================= 設定 ================= */
+      var RELAY = "https://narou-relay.gogo-nakachan.workers.dev/?url=";
+      var API = "https://api.syosetu.com/novelapi/api/";
+      var TATEYOMI_URL = "https://uotamy.github.io/tategaki-viewer/";
+      var GENRES = {
+        "101": "異世界恋愛", "102": "現実恋愛",
+        "201": "ハイファンタジー", "202": "ローファンタジー",
+        "301": "純文学", "302": "ヒューマンドラマ", "303": "歴史", "304": "推理",
+        "305": "ホラー", "306": "アクション", "307": "コメディー",
+        "401": "VRゲーム", "402": "宇宙", "403": "空想科学", "404": "パニック",
+        "9801": "ノンジャンル",
+        "9901": "童話", "9902": "詩", "9903": "エッセイ", "9904": "リプレイ", "9999": "その他"
+      };
+      var PERIOD_POINT_FIELD = {
+        dailypoint: ["daily_point", "日間pt"], weeklypoint: ["weekly_point", "週間pt"],
+        monthlypoint: ["monthly_point", "月間pt"], quaterpoint: ["quarter_point", "四半期pt"],
+        yearlypoint: ["yearly_point", "年間pt"]
+      };
+
+      /* ================= ユーティリティ ================= */
+      function $(sel) { return document.querySelector(sel); }
+      function esc(s) {
+        return String(s == null ? "" : s)
+          .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      }
+      function fmtNum(n) { return Number(n || 0).toLocaleString("ja-JP"); }
+      function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+      var toastTimer = null;
+      function toast(msg) {
+        var t = $("#toast");
+        t.textContent = msg;
+        t.classList.add("show");
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { t.classList.remove("show"); }, 3400);
+      }
+      function relayURL(target) { return RELAY + encodeURIComponent(target); }
+      function fetchRelayText(target, tries) {
+        tries = tries || 3;
+        var attempt = 0;
+        function go() {
+          attempt++;
+          return fetch(relayURL(target)).then(function (res) {
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.text();
+          }).catch(function (err) {
+            if (attempt < tries) return sleep(1200 * attempt).then(go);
+            throw err;
+          });
+        }
+        return go();
+      }
+      function apiFetch(params) {
+        var qs = new URLSearchParams();
+        qs.set("out", "json");
+        Object.keys(params).forEach(function (k) {
+          if (params[k] !== "" && params[k] != null) qs.set(k, params[k]);
+        });
+        return fetchRelayText(API + "?" + qs.toString(), 2).then(function (text) {
+          var data = JSON.parse(text);
+          var allcount = data.length && data[0] && data[0].allcount != null ? data[0].allcount : 0;
+          return { allcount: allcount, novels: data.slice(1) };
+        });
+      }
+      function genreName(code) { return GENRES[String(code)] || ("ジャンル" + code); }
+      function statusLabel(n) {
+        if (n.novel_type === 2) return "短編";
+        return n.end === 0 ? "完結" : "連載中";
+      }
+      function novelPageURL(ncode) { return "https://ncode.syosetu.com/" + String(ncode).toLowerCase() + "/"; }
+      function sanitizeFilename(name) {
+        return String(name || "novel").replace(/[\\/:*?"<>|\u0000-\u001f]/g, " ").replace(/\s+/g, " ").trim().slice(0, 80) || "novel";
+      }
+
+      /* ================= 作品カード ================= */
+      var novelStore = {}; // ncode(upper) -> novel object
+      function cardHTML(n, rank, periodOrder) {
+        novelStore[String(n.ncode).toUpperCase()] = n;
+        var status = statusLabel(n);
+        var eps = n.novel_type === 2 ? "短編" : ("全" + fmtNum(n.general_all_no) + "話");
+        var pointHTML = "";
+        if (periodOrder && PERIOD_POINT_FIELD[periodOrder]) {
+          var f = PERIOD_POINT_FIELD[periodOrder];
+          pointHTML = "<span>" + f[1] + " <b>" + fmtNum(n[f[0]]) + "</b></span>";
+        }
+        var kw = (n.keyword || "").trim();
+        return '<article class="card">' +
+          '<div class="card__top">' +
+            (rank ? '<div class="rank' + (rank <= 3 ? " rank--top" : "") + '">' + rank + "</div>" : "") +
+            '<div style="flex:1;min-width:0;">' +
+              '<h3 class="card__title"><a href="' + novelPageURL(n.ncode) + '" target="_blank" rel="noopener">' + esc(n.title) + "</a></h3>" +
+              '<div class="card__writer">' + esc(n.writer) + "</div>" +
+            "</div>" +
+          "</div>" +
+          '<div class="badges">' +
+            '<span class="badge">' + esc(genreName(n.genre)) + "</span>" +
+            '<span class="badge' + (status === "完結" ? " badge--done" : "") + '">' + status + "</span>" +
+            '<span class="badge">' + esc(n.ncode) + "</span>" +
+          "</div>" +
+          '<div class="meta">' +
+            "<span>" + eps + "</span>" +
+            "<span><b>" + fmtNum(n.length) + "</b>字</span>" +
+            "<span>総合pt <b>" + fmtNum(n.global_point) + "</b></span>" +
+            "<span>お気に入り <b>" + fmtNum(n.fav_novel_cnt) + "</b></span>" +
+            pointHTML +
+          "</div>" +
+          (n.story ? "<details><summary>あらすじ</summary><p class=\"story\">" + esc(n.story) + "</p></details>" : "") +
+          (kw ? '<p class="keywords">キーワード：' + esc(kw) + "</p>" : "") +
+          '<div class="card__actions">' +
+            '<button type="button" class="btn btn--primary" data-dl="' + esc(n.ncode) + '">全話ダウンロード</button>' +
+            '<button type="button" class="btn" data-similar="' + esc(n.ncode) + '">似た作品</button>' +
+          "</div>" +
+        "</article>";
+      }
+      function renderList(container, novels, opts) {
+        opts = opts || {};
+        if (!novels.length) {
+          container.innerHTML = '<div class="empty">' + esc(opts.emptyText || "作品が見つかりませんでした。") + "</div>";
+          return;
+        }
+        var html = "";
+        if (opts.heading) {
+          html += '<div class="results-head"><h2>' + esc(opts.heading) + '</h2>' +
+            (opts.countText ? '<span class="count">' + esc(opts.countText) + "</span>" : "") + "</div>";
+        }
+        novels.forEach(function (n, i) {
+          html += cardHTML(n, opts.ranked ? (opts.rankOffset || 0) + i + 1 : null, opts.periodOrder);
+        });
+        container.innerHTML = html;
+      }
+
+      /* ================= タブ ================= */
+      var rankingLoaded = false;
+      document.querySelectorAll(".tab-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll(".tab-btn").forEach(function (b) { b.setAttribute("aria-selected", "false"); });
+          btn.setAttribute("aria-selected", "true");
+          document.querySelectorAll(".panel").forEach(function (p) { p.classList.remove("active"); });
+          $("#panel-" + btn.dataset.tab).classList.add("active");
+          if (btn.dataset.tab === "ranking" && !rankingLoaded) loadRanking(true);
+        });
+      });
+
+      /* ジャンルselectを構築 */
+      function fillGenreSelect(sel, withAll) {
+        var html = withAll ? '<option value="">すべてのジャンル</option>' : "";
+        Object.keys(GENRES).forEach(function (code) {
+          html += '<option value="' + code + '">' + GENRES[code] + "</option>";
+        });
+        sel.innerHTML = html;
+      }
+      fillGenreSelect($("#s-genre"), true);
+      fillGenreSelect($("#r-genre"), true);
+
+      /* ================= 検索 ================= */
+      var searchState = { params: null, loaded: 0, allcount: 0 };
+      $("#search-form").addEventListener("submit", function (ev) {
+        ev.preventDefault();
+        searchState.params = {
+          word: $("#s-word").value.trim(),
+          genre: $("#s-genre").value,
+          type: $("#s-type").value,
+          order: $("#s-order").value,
+          lim: 30, st: 1
+        };
+        searchState.loaded = 0;
+        runSearch(true);
+      });
+      function runSearch(reset) {
+        var btn = $("#search-submit");
+        var box = $("#search-results");
+        btn.disabled = true; btn.textContent = "検索中…";
+        if (reset) box.innerHTML = '<div class="empty">検索しています…</div>';
+        apiFetch(searchState.params).then(function (res) {
+          searchState.allcount = res.allcount;
+          searchState.loaded += res.novels.length;
+          var head = { heading: "検索結果", countText: "全" + fmtNum(res.allcount) + "件" };
+          if (reset) {
+            renderList(box, res.novels, Object.assign(head, { emptyText: "条件に合う作品がありませんでした。" }));
+          } else {
+            var more = box.querySelector(".more-wrap");
+            if (more) more.remove();
+            var tmp = document.createElement("div");
+            tmp.innerHTML = res.novels.map(function (n) { return cardHTML(n); }).join("");
+            while (tmp.firstChild) box.appendChild(tmp.firstChild);
+          }
+          if (searchState.loaded < searchState.allcount && res.novels.length) {
+            var wrap = document.createElement("div");
+            wrap.className = "more-wrap";
+            wrap.innerHTML = '<button type="button" class="btn btn--block" id="search-more">もっと見る（残り ' + fmtNum(searchState.allcount - searchState.loaded) + '件）</button>';
+            box.appendChild(wrap);
+            $("#search-more").addEventListener("click", function () {
+              searchState.params.st = searchState.loaded + 1;
+              runSearch(false);
+            });
+          }
+        }).catch(function () {
+          if (reset) box.innerHTML = '<div class="empty">検索に失敗しました。時間をおいて再試行してください。</div>';
+          toast("検索に失敗しました");
+        }).finally(function () {
+          btn.disabled = false; btn.textContent = "検索する";
+        });
+      }
+
+      /* ================= ランキング ================= */
+      var rankState = { period: "weeklypoint", loaded: 0, allcount: 0 };
+      $("#rank-periods").addEventListener("click", function (ev) {
+        var btn = ev.target.closest("[data-period]");
+        if (!btn) return;
+        document.querySelectorAll("#rank-periods .chip").forEach(function (c) { c.setAttribute("aria-pressed", "false"); });
+        btn.setAttribute("aria-pressed", "true");
+        rankState.period = btn.dataset.period;
+        loadRanking(true);
+      });
+      $("#r-genre").addEventListener("change", function () { loadRanking(true); });
+      function loadRanking(reset) {
+        var box = $("#ranking-results");
+        if (reset) { rankState.loaded = 0; box.innerHTML = '<div class="empty">読み込んでいます…</div>'; }
+        rankingLoaded = true;
+        var params = { order: rankState.period, genre: $("#r-genre").value, lim: 30, st: rankState.loaded + 1 };
+        apiFetch(params).then(function (res) {
+          rankState.allcount = res.allcount;
+          var offset = rankState.loaded;
+          rankState.loaded += res.novels.length;
+          var periodLabel = { dailypoint: "日間", weeklypoint: "週間", monthlypoint: "月間", quaterpoint: "四半期", yearlypoint: "年間", hyoka: "累計" }[rankState.period];
+          if (reset) {
+            renderList(box, res.novels, {
+              heading: periodLabel + "ランキング", countText: "全" + fmtNum(res.allcount) + "件",
+              ranked: true, periodOrder: rankState.period, emptyText: "ランキングが取得できませんでした。"
+            });
+          } else {
+            var more = box.querySelector(".more-wrap");
+            if (more) more.remove();
+            var tmp = document.createElement("div");
+            tmp.innerHTML = res.novels.map(function (n, i) { return cardHTML(n, offset + i + 1, rankState.period); }).join("");
+            while (tmp.firstChild) box.appendChild(tmp.firstChild);
+          }
+          if (rankState.loaded < rankState.allcount && res.novels.length) {
+            var wrap = document.createElement("div");
+            wrap.className = "more-wrap";
+            wrap.innerHTML = '<button type="button" class="btn btn--block" id="rank-more">もっと見る</button>';
+            box.appendChild(wrap);
+            $("#rank-more").addEventListener("click", function () { loadRanking(false); });
+          }
+        }).catch(function () {
+          box.innerHTML = '<div class="empty">ランキングの取得に失敗しました。時間をおいてタブを開き直してください。</div>';
+        });
+      }
+
+      /* ================= おすすめ ================= */
+      var PRESETS = [
+        { label: "完結の高評価・推理", params: { genre: 304, type: "er", order: "hyoka" } },
+        { label: "短編の良作", params: { type: "ter", maxlen: 60000, order: "hyoka" } },
+        { label: "完結の大長編", params: { type: "er", minlen: 500000, order: "hyoka" } },
+        { label: "完結の高評価", params: { type: "er", order: "hyoka" } }
+      ];
+      var recState = { idx: -1, pool: [] };
+      function shufflePick(arr, num) {
+        var a = arr.slice();
+        for (var i = a.length - 1; i > 0; i--) {
+          var j = Math.floor(Math.random() * (i + 1));
+          var t = a[i]; a[i] = a[j]; a[j] = t;
+        }
+        return a.slice(0, num);
+      }
+      function drawRecommend() {
+        var picked = shufflePick(recState.pool, 10);
+        renderList($("#recommend-results"), picked, {
+          heading: PRESETS[recState.idx].label,
+          countText: "プール" + fmtNum(recState.pool.length) + "件からランダム10件",
+          emptyText: "候補がありませんでした。"
+        });
+      }
+      $("#rec-presets").addEventListener("click", function (ev) {
+        var btn = ev.target.closest("[data-preset]");
+        if (!btn) return;
+        document.querySelectorAll("#rec-presets .chip").forEach(function (c) { c.setAttribute("aria-pressed", "false"); });
+        btn.setAttribute("aria-pressed", "true");
+        recState.idx = Number(btn.dataset.preset);
+        recState.pool = [];
+        $("#rec-again").disabled = true;
+        $("#recommend-results").innerHTML = '<div class="empty">候補を集めています…</div>';
+        var params = Object.assign({}, PRESETS[recState.idx].params, { lim: 100 });
+        apiFetch(params).then(function (res) {
+          recState.pool = res.novels;
+          if (!recState.pool.length) {
+            $("#recommend-results").innerHTML = '<div class="empty">候補が見つかりませんでした。</div>';
+            return;
+          }
+          $("#rec-again").disabled = false;
+          drawRecommend();
+        }).catch(function () {
+          $("#recommend-results").innerHTML = '<div class="empty">取得に失敗しました。時間をおいて再試行してください。</div>';
+        });
+      });
+      $("#rec-again").addEventListener("click", function () {
+        if (recState.pool.length) { drawRecommend(); window.scrollTo({ top: $("#recommend-results").offsetTop - 120, behavior: "smooth" }); }
+      });
+
+      /* ================= URL指定 ================= */
+      $("#url-form").addEventListener("submit", function (ev) {
+        ev.preventDefault();
+        var raw = $("#u-input").value.trim();
+        var m = raw.match(/n\d{3,}[a-z]+/i);
+        if (!m) { toast("Nコードが見つかりませんでした"); return; }
+        var ncode = m[0].toUpperCase();
+        var btn = $("#url-submit");
+        btn.disabled = true; btn.textContent = "取得中…";
+        var box = $("#url-results");
+        box.innerHTML = '<div class="empty">作品情報を取得しています…</div>';
+        apiFetch({ ncode: ncode, lim: 1 }).then(function (res) {
+          if (!res.novels.length) {
+            box.innerHTML = '<div class="empty">作品が見つかりませんでした（' + esc(ncode) + "）。</div>";
+            return;
+          }
+          renderList(box, res.novels, { heading: "作品情報" });
+        }).catch(function () {
+          box.innerHTML = '<div class="empty">取得に失敗しました。時間をおいて再試行してください。</div>';
+        }).finally(function () {
+          btn.disabled = false; btn.textContent = "作品を表示";
+        });
+      });
+
+      /* ================= 似た作品 ================= */
+      function similarKeywords(n) {
+        var words = (n.keyword || "").split(/\s+/).filter(Boolean)
+          .filter(function (w) { return !/ai/i.test(w); });
+        var priority = words.filter(function (w) { return /探偵|ミステリ/.test(w); });
+        var rest = words.filter(function (w) { return !/探偵|ミステリ/.test(w); });
+        return priority.concat(rest).slice(0, 2);
+      }
+      function loadSimilar(n) {
+        var panel = $("#similar-panel");
+        var box = $("#similar-results");
+        panel.classList.add("open");
+        $("#similar-title").textContent = "『" + n.title + "』に似た作品";
+        box.innerHTML = '<div class="empty">探しています…</div>';
+        panel.scrollIntoView({ behavior: "smooth", block: "start" });
+        var words = similarKeywords(n);
+        apiFetch({
+          word: words.join(" "), genre: n.genre, order: "hyoka",
+          lim: 20, notncode: n.ncode
+        }).then(function (res) {
+          renderList(box, res.novels, { emptyText: "似た作品が見つかりませんでした。" });
+        }).catch(function () {
+          box.innerHTML = '<div class="empty">取得に失敗しました。</div>';
+        });
+      }
+      $("#similar-close").addEventListener("click", function () {
+        $("#similar-panel").classList.remove("open");
+      });
+
+      /* カード内ボタンの委譲 */
+      document.addEventListener("click", function (ev) {
+        var dl = ev.target.closest("[data-dl]");
+        if (dl) {
+          var n1 = novelStore[String(dl.dataset.dl).toUpperCase()];
+          if (n1) startDownload(n1);
+          return;
+        }
+        var sim = ev.target.closest("[data-similar]");
+        if (sim) {
+          var n2 = novelStore[String(sim.dataset.similar).toUpperCase()];
+          if (n2) loadSimilar(n2);
+        }
+      });
+    </script>
+    <script>
+      "use strict";
+      /* ================= 本文取得と青空文庫形式変換 ================= */
+      function parseToc(html, initialChapter) {
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        var episodes = [];
+        var chapter = initialChapter || "";
+        var root = doc.querySelector(".p-eplist");
+        if (root) {
+          var nodes = root.querySelectorAll(".p-eplist__chapter-title, a.p-eplist__subtitle");
+          nodes.forEach(function (el) {
+            if (el.classList.contains("p-eplist__chapter-title")) {
+              chapter = el.textContent.trim();
+            } else {
+              var href = el.getAttribute("href") || "";
+              var m = href.match(/\/(\d+)\/?(?:\?.*)?$/);
+              episodes.push({
+                no: m ? parseInt(m[1], 10) : episodes.length + 1,
+                title: el.textContent.trim(),
+                chapter: chapter
+              });
+            }
+          });
+        }
+        return { episodes: episodes, lastChapter: chapter, hasText: !!doc.querySelector(".js-novel-text") };
+      }
+
+      function nodeToAozora(node) {
+        var out = "";
+        node.childNodes.forEach(function (ch) {
+          if (ch.nodeType === 3) { out += ch.nodeValue; return; }
+          if (ch.nodeType !== 1) return;
+          var tag = ch.tagName.toLowerCase();
+          if (tag === "ruby") {
+            var base = "", rt = "";
+            ch.childNodes.forEach(function (g) {
+              if (g.nodeType === 1 && g.tagName.toLowerCase() === "rt") rt += g.textContent;
+              else if (g.nodeType === 1 && g.tagName.toLowerCase() === "rp") { /* 括弧は落とす */ }
+              else if (g.nodeType === 3) base += g.nodeValue;
+              else if (g.nodeType === 1) base += nodeToAozora(g);
+            });
+            out += "｜" + base + "《" + rt + "》";
+          } else if (tag === "rt" || tag === "rp" || tag === "br") {
+            /* そのまま落とす */
+          } else if (tag === "img") {
+            var alt = ch.getAttribute("alt");
+            if (alt) out += alt;
+          } else {
+            out += nodeToAozora(ch);
+          }
+        });
+        return out;
+      }
+      function trimBlankLines(lines) {
+        var a = lines.slice();
+        while (a.length && a[0] === "") a.shift();
+        while (a.length && a[a.length - 1] === "") a.pop();
+        return a;
+      }
+      function episodeTextFromHTML(html, heading) {
+        var doc = new DOMParser().parseFromString(html, "text/html");
+        var sections = doc.querySelectorAll(".p-novel__text");
+        if (!sections.length) return null;
+        var pre = [], body = [], post = [];
+        sections.forEach(function (sec) {
+          var lines = [];
+          sec.querySelectorAll("p").forEach(function (p) { lines.push(nodeToAozora(p)); });
+          if (sec.classList.contains("p-novel__text--preface")) pre = lines;
+          else if (sec.classList.contains("p-novel__text--afterword")) post = lines;
+          else body = body.concat(lines);
+        });
+        var parts = [heading, ""];
+        pre = trimBlankLines(pre); body = trimBlankLines(body); post = trimBlankLines(post);
+        if (pre.length) { parts = parts.concat(pre); parts.push(""); }
+        parts = parts.concat(body);
+        if (post.length) { parts.push(""); parts = parts.concat(post); }
+        return parts.join("\r\n") + "\r\n";
+      }
+      function toSJIS(text) {
+        var codes = Encoding.convert(Encoding.stringToCode(text), { to: "SJIS", from: "UNICODE" });
+        return new Uint8Array(codes);
+      }
+      function formatBytes(bytes) {
+        if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + " MB";
+        if (bytes >= 1024) return Math.round(bytes / 1024) + " KB";
+        return bytes + " B";
+      }
+
+      /* ================= ダウンロード ================= */
+      var dlState = { downloading: false, cancelled: false, blob: null, novel: null };
+      var backdrop = $("#sheet-backdrop");
+      function openSheet(novel) {
+        $("#sheet-title").textContent = novel.title;
+        $("#sheet-sub").textContent = novel.writer + "／" + statusLabel(novel) + "／全" + fmtNum(novel.general_all_no) + "話";
+        $("#sheet-warn").classList.toggle("show", (novel.general_all_no || 0) > 300);
+        $("#sheet-progress-area").style.display = "block";
+        $("#sheet-done").classList.remove("show");
+        $("#sheet-registered").classList.remove("show");
+        $("#sheet-registered").innerHTML = "";
+        $("#sheet-fill").style.width = "0%";
+        $("#sheet-text").textContent = "目次を取得しています…";
+        var cancelBtn = $("#sheet-cancel");
+        cancelBtn.textContent = "キャンセル";
+        cancelBtn.style.display = "block";
+        backdrop.classList.add("open");
+      }
+      function closeSheet() { backdrop.classList.remove("open"); }
+      function sheetFail(msg) {
+        $("#sheet-text").textContent = msg;
+        var cancelBtn = $("#sheet-cancel");
+        cancelBtn.textContent = "閉じる";
+      }
+      $("#sheet-cancel").addEventListener("click", function () {
+        if (dlState.downloading) {
+          dlState.cancelled = true;
+          $("#sheet-text").textContent = "キャンセルしています…";
+        } else {
+          closeSheet();
+        }
+      });
+      $("#sheet-close").addEventListener("click", closeSheet);
+
+      function startDownload(novel) {
+        if (dlState.downloading) { toast("ダウンロード中です"); return; }
+        if (typeof JSZip === "undefined" || typeof Encoding === "undefined") {
+          toast("ライブラリの読み込みに失敗しました。ページを再読み込みしてください");
+          return;
+        }
+        dlState.downloading = true;
+        dlState.cancelled = false;
+        dlState.blob = null;
+        dlState.novel = novel;
+        openSheet(novel);
+        runDownload(novel).then(function (result) {
+          dlState.downloading = false;
+          if (result === "cancelled") {
+            $("#sheet-text").textContent = "キャンセルしました。";
+            $("#sheet-cancel").textContent = "閉じる";
+          }
+        }).catch(function (err) {
+          dlState.downloading = false;
+          sheetFail(err && err.message ? err.message : "取得に失敗しました。時間をおいて再試行してください。");
+        });
+      }
+
+      function runDownload(novel) {
+        var lower = String(novel.ncode).toLowerCase();
+        var base = "https://ncode.syosetu.com/" + lower + "/";
+        var fill = $("#sheet-fill"), text = $("#sheet-text");
+        return collectEpisodes(novel, base).then(function (collected) {
+          if (dlState.cancelled) return "cancelled";
+          var episodes = collected.episodes;
+          if (episodes.length > 300) $("#sheet-warn").classList.add("show");
+          var zip = new JSZip();
+          var width = Math.max(3, String(episodes.length).length);
+          var i = 0;
+          function next() {
+            if (dlState.cancelled) return "cancelled";
+            if (i >= episodes.length) return finishZip(zip, novel, episodes.length);
+            var ep = episodes[i];
+            var heading = ep.chapter ? ep.chapter + "　" + ep.title : ep.title;
+            text.textContent = (i + 1) + " / " + episodes.length + "話　" + ep.title;
+            fill.style.width = Math.round((i / episodes.length) * 100) + "%";
+            var htmlPromise = ep.html != null ? Promise.resolve(ep.html)
+              : fetchRelayText(base + ep.no + "/", 3);
+            return htmlPromise.then(function (html) {
+              var content = episodeTextFromHTML(html, heading);
+              if (content == null) throw new Error("第" + ep.no + "話の本文が見つかりませんでした。");
+              var fname = String(i + 1).padStart(width, "0") + "_" + sanitizeFilename(ep.title) + ".txt";
+              zip.file(fname, toSJIS(content));
+              i++;
+              return sleep(400).then(next);
+            }).catch(function (err) {
+              if (err && err.message && err.message.indexOf("本文が見つかりません") >= 0) throw err;
+              throw new Error("第" + ep.no + "話の取得に失敗しました。時間をおいて再試行してください。");
+            });
+          }
+          return next();
+        });
+      }
+
+      function collectEpisodes(novel, base) {
+        return fetchRelayText(base, 3).then(function (firstHTML) {
+          var first = parseToc(firstHTML, "");
+          if (!first.episodes.length) {
+            if (first.hasText) {
+              return { episodes: [{ no: 1, title: novel.title, chapter: "", html: firstHTML }] };
+            }
+            throw new Error("目次が取得できませんでした。");
+          }
+          var episodes = first.episodes.slice();
+          var seen = {};
+          episodes.forEach(function (e) { seen[e.no] = true; });
+          var expected = novel.general_all_no || episodes.length;
+          var lastChapter = first.lastChapter;
+          var page = 2;
+          function more() {
+            if (dlState.cancelled) return { episodes: episodes };
+            if (episodes.length >= expected || page > 100) return { episodes: episodes };
+            return fetchRelayText(base + "?p=" + page, 3).then(function (html) {
+              var parsed = parseToc(html, lastChapter);
+              lastChapter = parsed.lastChapter;
+              var added = 0;
+              parsed.episodes.forEach(function (e) {
+                if (!seen[e.no]) { seen[e.no] = true; episodes.push(e); added++; }
+              });
+              page++;
+              if (!added) return { episodes: episodes };
+              return sleep(400).then(more);
+            });
+          }
+          return more().then(function (r) {
+            r.episodes.sort(function (a, b) { return a.no - b.no; });
+            return r;
+          });
+        });
+      }
+
+      function finishZip(zip, novel, epCount) {
+        var fill = $("#sheet-fill"), text = $("#sheet-text");
+        text.textContent = "ZIPを作成しています…";
+        return zip.generateAsync({ type: "blob" }, function (meta) {
+          fill.style.width = Math.round(90 + meta.percent / 10) + "%";
+          text.textContent = "ZIPを作成しています… " + Math.round(meta.percent) + "%";
+        }).then(function (blob) {
+          if (dlState.cancelled) return "cancelled";
+          dlState.blob = blob;
+          fill.style.width = "100%";
+          $("#sheet-title").textContent = "ダウンロード完了";
+          $("#sheet-sub").textContent = novel.title + "／全" + epCount + "話／" + formatBytes(blob.size);
+          $("#sheet-progress-area").style.display = "none";
+          $("#sheet-done").classList.add("show");
+          return "done";
+        });
+      }
+
+      /* ZIP保存 */
+      $("#sheet-save").addEventListener("click", function () {
+        if (!dlState.blob || !dlState.novel) return;
+        var url = URL.createObjectURL(dlState.blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = sanitizeFilename(dlState.novel.title) + ".zip";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 5000);
+        toast("ZIPを保存しました");
+      });
+
+      /* タテヨミに登録（IndexedDB: narou-dl-inbox / books） */
+      $("#sheet-register").addEventListener("click", function () {
+        if (!dlState.blob || !dlState.novel) return;
+        var btn = this;
+        btn.disabled = true; btn.textContent = "登録中…";
+        var req = indexedDB.open("narou-dl-inbox", 1);
+        req.onupgradeneeded = function () {
+          var db = req.result;
+          if (!db.objectStoreNames.contains("books")) {
+            db.createObjectStore("books", { keyPath: "id", autoIncrement: true });
+          }
+        };
+        req.onerror = function () {
+          btn.disabled = false; btn.textContent = "タテヨミに登録";
+          toast("登録に失敗しました");
+        };
+        req.onsuccess = function () {
+          var db = req.result;
+          var tx = db.transaction("books", "readwrite");
+          tx.objectStore("books").add({
+            title: dlState.novel.title,
+            blob: dlState.blob,
+            addedAt: Date.now()
+          });
+          tx.oncomplete = function () {
+            btn.disabled = false; btn.textContent = "タテヨミに登録";
+            var note = $("#sheet-registered");
+            var extra = location.hostname === "uotamy.github.io"
+              ? ""
+              : "<br>※タテヨミとの連携は GitHub Pages 版（uotamy.github.io）で開いたときに有効です。";
+            note.innerHTML = "登録しました。タテヨミを開くと本棚に追加されます。" + extra +
+              '<br><a href="' + TATEYOMI_URL + '" target="_blank" rel="noopener">タテヨミを開く</a>';
+            note.classList.add("show");
+            db.close();
+          };
+          tx.onerror = function () {
+            btn.disabled = false; btn.textContent = "タテヨミに登録";
+            toast("登録に失敗しました");
+            db.close();
+          };
+        };
+      });
+    </script>
+  </body>
+</html>
