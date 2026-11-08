@@ -249,6 +249,17 @@
       .sheet .btn { margin-top: 10px; }
       .done-actions { display: none; }
       .done-actions.show { display: block; }
+      .done-guide {
+        background: var(--surface-2); border-radius: 8px;
+        padding: 10px 12px; font-size: 13px; line-height: 1.7;
+        margin-top: 4px;
+      }
+      .done-guide p { margin: 0 0 6px; }
+      .done-guide p:last-child { margin-bottom: 0; }
+      .done-guide strong { color: var(--accent); }
+      .btn--secondary {
+        background: var(--surface-2); border-color: var(--line); color: var(--ink-2);
+      }
       .registered-note {
         display: none; background: var(--accent-soft); color: var(--ink);
         border-radius: 8px; padding: 10px 12px; font-size: 13.5px; margin-top: 12px;
@@ -419,8 +430,12 @@
           <button type="button" class="btn btn--block" id="sheet-cancel">キャンセル</button>
         </div>
         <div class="done-actions" id="sheet-done">
+          <div class="done-guide">
+            <p><strong>タテヨミに登録</strong>＝取得した本文をタテヨミの本棚へ直接送ります。先にZIPを保存しなくても、そのまま読めます。</p>
+            <p><strong>ZIPを保存</strong>＝ZIPファイルとして端末に残します（予備用）。タテヨミで読むだけなら不要です。</p>
+          </div>
           <button type="button" class="btn btn--primary" id="sheet-register">タテヨミに登録</button>
-          <button type="button" class="btn btn--block" id="sheet-save">ZIPを保存</button>
+          <button type="button" class="btn btn--block btn--secondary" id="sheet-save">ZIPを保存</button>
           <a class="btn sheet-affiliate" id="sheet-affiliate" target="_blank" rel="noopener sponsored">書籍版を探す（Amazon）</a>
           <div class="admax-slot" data-admax-slot="download" hidden></div>
           <div class="registered-note" id="sheet-registered"></div>
